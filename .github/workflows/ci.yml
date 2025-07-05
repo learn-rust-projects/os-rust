@@ -1,0 +1,22 @@
+name: Rust Format Check
+
+on: [push, pull_request]
+
+jobs:
+  fmt-check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Rust toolchain
+        uses: dtolnay/rust-toolchain@nightly
+        with:
+          components: rustfmt
+
+      - name: Check rust version
+        run: rustc --version --verbose
+
+      - name: Format check
+        run: cargo fmt --all -- --check

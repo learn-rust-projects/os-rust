@@ -3,20 +3,42 @@ name: Rust Format Check
 on: [push, pull_request]
 
 jobs:
-  fmt-check:
+  build-and-test:
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Rust toolchain
-        uses: dtolnay/rust-toolchain@nightly
-        with:
-          components: rustfmt
+      - name: Update toolchain based on rust-toolchain.toml
+        run: rustup update
 
       - name: Check rust version
         run: rustc --version --verbose
+      
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-registry-
+
+      - name: Cache cargo build
+        uses: actions/cache@v4
+        with:
+          path: target
+          key: ${{ runner.os }}-cargo-build-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-build-
 
       - name: Format check
         run: cargo fmt --all -- --check
+
+      - name: Clippy
+        run: cargo clippy --all-features
+      
+      - name: Build
+        run: cargo build  --all-features

@@ -13,8 +13,14 @@ pub extern "C" fn _start() -> ! {
     println!("Hello World{}", "!");
 
     os_rust::init(); // new
+    // 允许无条件的递归
+    #[allow(unconditional_recursion)]
+    fn stack_overflow() {
+        stack_overflow(); // 每一次递归都会将返回地址入栈
+    }
 
-    x86_64::instructions::interrupts::int3(); // new
+    // 触发 stack overflow
+    stack_overflow();
 
     #[cfg(test)]
     test_main();

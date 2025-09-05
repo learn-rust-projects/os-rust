@@ -11,8 +11,15 @@ use os_rust::println;
 #[unsafe(no_mangle)] // 不重整函数名
 pub extern "C" fn _start() -> ! {
     println!("Hello World{}", "!");
+
+    os_rust::init(); // new
+
+    x86_64::instructions::interrupts::int3(); // new
+
     #[cfg(test)]
     test_main();
+
+    println!("It did not crash!");
     #[allow(clippy::empty_loop)]
     loop {}
 }

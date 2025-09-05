@@ -13,21 +13,11 @@ pub extern "C" fn _start() -> ! {
     println!("Hello World{}", "!");
 
     os_rust::init(); // new
-    // 允许无条件的递归
-    #[allow(unconditional_recursion)]
-    fn stack_overflow() {
-        stack_overflow(); // 每一次递归都会将返回地址入栈
-    }
-
-    // 触发 stack overflow
-    stack_overflow();
-
     #[cfg(test)]
     test_main();
 
     println!("It did not crash!");
-    #[allow(clippy::empty_loop)]
-    loop {}
+    os_rust::hlt_loop();
 }
 
 /// 这个函数将在 panic 时被调用
@@ -35,7 +25,7 @@ pub extern "C" fn _start() -> ! {
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {
     println!("{}", info);
-    loop {}
+    os_rust::hlt_loop();
 }
 
 // our panic handler in test mode

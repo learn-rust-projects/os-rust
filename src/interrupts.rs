@@ -9,11 +9,11 @@ lazy_static! {
     static ref IDT: InterruptDescriptorTable = {
         let mut idt = InterruptDescriptorTable::new();
         idt.breakpoint.set_handler_fn(breakpoint_handler);
-
-       unsafe {
+        idt.page_fault.set_handler_fn(page_fault_handler); // new
+        unsafe {
                idt.double_fault.set_handler_fn(double_fault_handler)
                .set_stack_index(gdt::DOUBLE_FAULT_IST_INDEX );
-                }
+            }
 
          // 注册时 cast 成期望类型
          // IndexMut 特征，因此我们可以通过数组索引语法访问单个条目
@@ -50,7 +50,21 @@ extern "x86-interrupt" fn timer_interrupt_handler(_stack_frame: InterruptStackFr
             .notify_end_of_interrupt(InterruptIndex::Timer.as_u8());
     }
 }
+use x86_64::structures::idt::PageFaultErrorCode;
 
+use crate::hlt_loop;
+extern "x86-interrupt" fn page_fault_handler(
+    stack_frame: InterruptStackFrame,
+    error_code: PageFaultErrorCode,
+) {
+    use x86_64::registers::control::Cr2;
+
+    println!("EXCEPTION: PAGE FAULT");
+    println!("Accessed Address: {:?}", Cr2::read());
+    println!("Error Code: {:?}", error_code);
+    println!("{:#?}", stack_frame);
+    hlt_loop();
+}
 extern "x86-interrupt" fn keyboard_interrupt_handler(_stack_frame: InterruptStackFrame) {
     // 键盘按下产生 扫描码 (scan code)，键盘控制器把它放到 输出缓冲区 (Output
     // Buffer)。

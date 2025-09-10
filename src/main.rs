@@ -3,7 +3,8 @@
 #![feature(custom_test_frameworks)]
 #![test_runner(os_rust::test_runner)]
 #![reexport_test_harness_main = "test_main"]
-
+extern crate alloc;
+use alloc::{boxed::Box, rc::Rc, vec, vec::Vec};
 use core::panic::PanicInfo;
 
 use bootloader::{BootInfo, entry_point};
@@ -26,7 +27,7 @@ fn kernel_main(boot_info: &'static BootInfo) -> ! {
     // 导入必要的函数和类型
     // active_level_4_table: 获取当前活动的 Level 4 页表的函数
     // VirtAddr: 表示虚拟内存地址的类型
-    use os_rust::memory;
+    use os_rust::{allocator, memory};
     use x86_64::{
         VirtAddr,
         structures::paging::{Page, Translate},
@@ -75,6 +76,32 @@ fn kernel_main(boot_info: &'static BootInfo) -> ! {
     #[cfg(test)]
     test_main();
 
+    allocator::init_heap(&mut mapper, &mut frame_allocator).expect("init_heap failed");
+
+    // 在堆上分配数字
+    let heap_value = Box::new(41);
+    println!("heap_value at {:p}", heap_value);
+    let heap_value = Box::new(41);
+    println!("heap_value at {:p}", heap_value);
+    // 创建动态大小向量
+    let mut vec = Vec::with_capacity(500);
+    for i in 0..500 {
+        vec.push(i);
+    }
+    println!("vec at {:p}", vec.as_slice());
+
+    // 创建引用计数向量，计数为 0 时释放
+    let reference_counted = Rc::new(vec![1, 2, 3]);
+    let cloned_reference = reference_counted.clone();
+    println!(
+        "current reference count is {}",
+        Rc::strong_count(&cloned_reference)
+    );
+    core::mem::drop(reference_counted);
+    println!(
+        "reference count is {} now",
+        Rc::strong_count(&cloned_reference)
+    );
     // 打印消息，表示内核成功执行到此处而没有崩溃
     println!("It did not crash!");
 

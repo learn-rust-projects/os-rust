@@ -1,14 +1,25 @@
+pub mod bump;
+pub mod fixed_size_block;
+pub mod linked_list;
+
 use alloc::alloc::{GlobalAlloc, Layout};
 use core::ptr::null_mut;
 
+use fixed_size_block::FixedSizeBlockAllocator;
+use linked_list::LinkedListAllocator;
 use linked_list_allocator::LockedHeap;
 
 pub const HEAP_START: usize = 0x_4444_4444_0000;
 pub const HEAP_SIZE: usize = 100 * 1024; // 100 KiB
 
+#[allow(unused)]
+use bump::BumpAllocator;
 #[global_allocator]
-static ALLOCATOR: LockedHeap = LockedHeap::empty();
+static ALLOCATOR: Locked<FixedSizeBlockAllocator> = Locked::new(FixedSizeBlockAllocator::new());
+static _ALLOCATOR_LIST: Locked<LinkedListAllocator> = Locked::new(LinkedListAllocator::new());
 
+static _ALLOCATOR_BUMP: Locked<BumpAllocator> = Locked::new(BumpAllocator::new());
+static _ALLOCATOR_LOCK: LockedHeap = LockedHeap::empty();
 static _ALLOCATOR_DUMMY: Dummy = Dummy;
 pub struct Dummy;
 
@@ -56,4 +67,23 @@ pub fn init_heap(
         ALLOCATOR.lock().init(HEAP_START, HEAP_SIZE);
     }
     Ok(())
+}
+pub struct Locked<A> {
+    inner: spin::Mutex<A>,
+}
+
+impl<A> Locked<A> {
+    pub const fn new(inner: A) -> Self {
+        Locked {
+            inner: spin::Mutex::new(inner),
+        }
+    }
+
+    pub fn lock(&self) -> spin::MutexGuard<'_, A> {
+        self.inner.lock()
+    }
+}
+
+fn align_up(addr: usize, align: usize) -> usize {
+    (addr + align - 1) & !(align - 1)
 }

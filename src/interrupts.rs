@@ -72,33 +72,14 @@ extern "x86-interrupt" fn keyboard_interrupt_handler(_stack_frame: InterruptStac
     // CPU 响应中断后，内核的键盘中断处理函数会读取扫描码。
     // 关键点：在你读取扫描码之前，键盘控制器不会发送新的中断。
     // 换句话说，如果缓冲区里还有未读取的数据，中断不会再触发。
-    use pc_keyboard::{DecodedKey, HandleControl, Keyboard, ScancodeSet1, layouts};
-    use spin::Mutex;
+
     use x86_64::instructions::port::Port;
 
-    lazy_static! {
-        static ref KEYBOARD: Mutex<Keyboard<layouts::Us104Key, ScancodeSet1>> =
-            Mutex::new(Keyboard::new(
-                ScancodeSet1::new(),
-                layouts::Us104Key,
-                HandleControl::Ignore
-            ));
-    }
-    let mut keyboard = KEYBOARD.lock();
     let mut port = Port::new(0x60);
     let scancode: u8 = unsafe { port.read() };
-    // Option<KeyEvent> 结构。KeyEvent
-    // 包括了触发本次中断的按键信息，以及子动作是按下还是释放。
-    if let Ok(Some(key_event)) = keyboard.add_byte(scancode) {
-        // 要处理KeyEvent，我们还需要将其传入 process_keyevent
-        // 函数，将其转换为人类可读的字符
-        if let Some(key) = keyboard.process_keyevent(key_event) {
-            match key {
-                DecodedKey::Unicode(character) => print!("{}", character),
-                DecodedKey::RawKey(key) => print!("{:?}", key),
-            }
-        }
-    }
+
+    crate::task::keyboard::add_scancode(scancode); // new
+
     unsafe {
         PICS.lock()
             .notify_end_of_interrupt(InterruptIndex::Keyboard.as_u8());

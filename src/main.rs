@@ -8,10 +8,12 @@ use alloc::{boxed::Box, rc::Rc, vec, vec::Vec};
 use core::panic::PanicInfo;
 
 use bootloader::{BootInfo, entry_point};
-use os_rust::println;
-
+use os_rust::{
+    println,
+    task::{Task, executor::Executor, simple_executor::SimpleExecutor},
+};
 entry_point!(kernel_main);
-
+use os_rust::task::keyboard; // new
 /// 内核的主入口点函数
 ///
 /// 这个函数在操作系统启动时由 bootloader 调用，是操作系统内核的主要执行起点。
@@ -102,12 +104,31 @@ fn kernel_main(boot_info: &'static BootInfo) -> ! {
         "reference count is {} now",
         Rc::strong_count(&cloned_reference)
     );
+
+    // 测试异步任务
+    // let mut excuter = SimpleExecutor::new();
+    // excuter.spawn(Task::new(example_task()));
+    // excuter.spawn(Task::new(keyboard::print_keypress())); // new
+    // excuter.run();
+    let mut executor = Executor::new(); // new
+    // executor.spawn(Task::new(example_task()));
+    executor.spawn(Task::new(keyboard::print_keypresses()));
+    executor.run();
     // 打印消息，表示内核成功执行到此处而没有崩溃
     println!("It did not crash!");
 
     // 进入 HLT 循环，使 CPU 进入低功耗状态，等待中断唤醒
     // 这是一个无限循环，内核会一直停留在这个状态直到收到中断
+
     os_rust::hlt_loop();
+}
+async fn async_number() -> u32 {
+    42
+}
+async fn example_task() {
+    let number = async_number().await;
+    println!("number: {}", number);
+    println!("Hello from a async task!");
 }
 
 /// 这个函数将在 panic 时被调用
